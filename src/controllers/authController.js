@@ -40,7 +40,12 @@ const issueOtp = async (user) => {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(`\n🔑 OTP for ${user.email}: ${code}\n`);
+    console.log('\n┌─────────────────────────────────┐');
+    console.log(`│  OTP for ${user.email.padEnd(23)} │`);
+    console.log(`│                                 │`);
+    console.log(`│        CODE :  ${code}          │`);
+    console.log(`│                                 │`);
+    console.log('└─────────────────────────────────┘\n');
   }
 
   return code;
@@ -71,18 +76,36 @@ exports.login = async (req, res) => {
 };
 
 // POST /api/auth/verify-otp
+const MAX_OTP_ATTEMPTS = 5;
+
 exports.verifyOtp = async (req, res) => {
   const { code } = req.body;
   if (!code) {
     return res.status(400).json({ success: false, message: 'OTP code is required.' });
   }
-  const otp = await Otp.findOne({ userId: req.user._id, code, used: false });
-  if (!otp) {
-    return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
-  }
-  if (otp.expiresAt < new Date()) {
+
+  const otp = await Otp.findOne({ userId: req.user._id, used: false });
+  if (!otp || otp.expiresAt < new Date()) {
     return res.status(400).json({ success: false, message: 'OTP has expired. Request a new one.' });
   }
+
+  if (otp.attempts >= MAX_OTP_ATTEMPTS) {
+    return res.status(429).json({ success: false, message: `Too many attempts. Please request a new code.` });
+  }
+
+  if (otp.code !== code) {
+    otp.attempts += 1;
+    await otp.save();
+    const remaining = MAX_OTP_ATTEMPTS - otp.attempts;
+    if (remaining <= 0) {
+      return res.status(429).json({ success: false, message: 'Too many attempts. Please request a new code.' });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `Invalid code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+    });
+  }
+
   otp.used = true;
   await otp.save();
   req.user.stage = 'verified';
