@@ -112,7 +112,7 @@ const otpHtml = (firstName, code) => `
 
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#6366f1,#06b6d4);padding:28px 40px;">
+            <td style="background:linear-gradient(135deg,#f59e0b,#f97316,#ef4444);padding:28px 40px;">
               <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:0.06em;">GRAVITY GYM</span>
             </td>
           </tr>
@@ -127,8 +127,8 @@ const otpHtml = (firstName, code) => `
               </p>
 
               <!-- OTP box -->
-              <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;">
-                <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;">Verification code</p>
+              <div style="background:#fff7ed;border:2px dashed #fed7aa;border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#f97316;letter-spacing:2px;text-transform:uppercase;">Verification code</p>
                 <p style="margin:0;font-size:44px;font-weight:800;letter-spacing:14px;color:#0f172a;font-family:monospace;">${code}</p>
               </div>
 
