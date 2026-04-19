@@ -11,7 +11,6 @@ const memberSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      unique: true,
     },
 
     // ── Membership ──────────────────────────────────────────────────────────
@@ -73,6 +72,32 @@ const memberSchema = new mongoose.Schema(
       relation: String,
     },
 
+    // ── Staff-assigned programs (diet / exercise) ───────────────────────────
+    assignedPrograms: {
+      diet: {
+        title: { type: String, trim: true, default: '' },
+        notes: { type: String, trim: true, default: '' },
+        items: [{ type: String, trim: true }],
+      },
+      exercise: {
+        title: { type: String, trim: true, default: '' },
+        notes: { type: String, trim: true, default: '' },
+        routine: [
+          {
+            name:   { type: String, trim: true, default: '' },
+            detail: { type: String, trim: true, default: '' },
+          },
+        ],
+      },
+    },
+
+    // ── Visit log (each entry = one check-in / visit) ────────────────────────
+    attendance: [
+      {
+        at: { type: Date, required: true },
+      },
+    ],
+
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -81,5 +106,8 @@ const memberSchema = new mongoose.Schema(
 memberSchema.virtual('isExpired').get(function () {
   return this.membershipEnd < new Date();
 });
+
+// Same person can be a member at multiple gyms, but not twice at the same gym
+memberSchema.index({ user: 1, gym: 1 }, { unique: true });
 
 module.exports = mongoose.model('Member', memberSchema);

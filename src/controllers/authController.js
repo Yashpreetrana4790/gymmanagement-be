@@ -2,7 +2,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
-const { sendOtpEmail } = require('../services/emailService');
+const Staff = require('../models/Staff');
+const { sendOtpEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -72,7 +73,17 @@ exports.login = async (req, res) => {
   if (!user.isActive) {
     return res.status(403).json({ success: false, message: 'Account is deactivated.' });
   }
-  sendToken(user, 200, res);
+
+  let staffRole = null;
+  if (user.role === 'staff') {
+    const staffMember = await Staff.findOneAndUpdate(
+      { userId: user._id },
+      { $unset: { tempPassword: 1 } }
+    );
+    if (staffMember) staffRole = staffMember.role;
+  }
+
+  sendToken(user, 200, res, staffRole ? { staffRole } : {});
 };
 
 // POST /api/auth/verify-otp
@@ -129,4 +140,76 @@ exports.resendOtp = async (req, res) => {
 // GET /api/auth/me
 exports.getMe = async (req, res) => {
   res.status(200).json({ success: true, user: req.user });
+};
+
+// POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required.' });
+  }
+
+  const user = await User.findOne({ email, isActive: true });
+  if (user) {
+    await Otp.deleteMany({ userId: user._id });
+    const code = generateOtp();
+    await Otp.create({ userId: user._id, code });
+    try {
+      await sendPasswordResetEmail(email, user.firstName, code);
+    } catch (err) {
+      console.error('[Email] Failed to send reset email:', err.message);
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n🔑  Reset OTP for ${email}: ${code}\n`);
+    }
+  }
+
+  // Always succeed to prevent email enumeration
+  res.status(200).json({ success: true, message: 'If that email is registered, a reset code has been sent.' });
+};
+
+// POST /api/auth/reset-password
+exports.resetPassword = async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Email, code, and new password are required.' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired reset code.' });
+  }
+
+  const otp = await Otp.findOne({ userId: user._id, used: false });
+  if (!otp || otp.expiresAt < new Date()) {
+    return res.status(400).json({ success: false, message: 'Reset code has expired. Request a new one.' });
+  }
+
+  if (otp.attempts >= MAX_OTP_ATTEMPTS) {
+    return res.status(429).json({ success: false, message: 'Too many attempts. Request a new code.' });
+  }
+
+  if (otp.code !== code) {
+    otp.attempts += 1;
+    await otp.save();
+    const remaining = MAX_OTP_ATTEMPTS - otp.attempts;
+    if (remaining <= 0) {
+      return res.status(429).json({ success: false, message: 'Too many attempts. Request a new code.' });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `Invalid code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+    });
+  }
+
+  otp.used = true;
+  await otp.save();
+
+  user.password = newPassword;
+  await user.save();
+
+  res.status(200).json({ success: true, message: 'Password reset successfully. You can now log in.' });
 };

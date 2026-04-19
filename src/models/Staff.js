@@ -44,6 +44,14 @@ const staffSchema = new mongoose.Schema(
       shiftEnd:    { type: String }, // "17:00"
     },
 
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+
+    tempPassword: { type: String, select: false }, // cleared on staff's first login
+
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

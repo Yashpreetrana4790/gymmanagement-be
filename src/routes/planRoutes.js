@@ -3,14 +3,17 @@ const router = express.Router();
 const {
   getAllPlans,
   getPlan,
+  getPlanStats,
   createPlan,
   updatePlan,
   deletePlan,
 } = require('../controllers/planController');
 const { protect, authorize } = require('../middleware/auth');
+// protect/authorize used directly on stats route above
 
 // Public — anyone can view plans
 router.get('/', getAllPlans);
+router.get('/stats', protect, authorize('admin', 'staff'), getPlanStats);
 router.get('/:id', getPlan);
 
 // Admin only — manage plans

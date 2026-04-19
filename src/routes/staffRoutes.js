@@ -6,6 +6,8 @@ const {
   createStaff,
   updateStaff,
   deleteStaff,
+  createAccount,
+  revokeAccount,
 } = require('../controllers/staffController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -19,5 +21,8 @@ router.route('/:id')
   .get(authorize('admin', 'staff'), getStaff)
   .put(authorize('admin'), updateStaff)
   .delete(authorize('admin'), deleteStaff);
+
+router.post('/:id/create-account', authorize('admin'), createAccount);
+router.delete('/:id/account', authorize('admin'), revokeAccount);
 
 module.exports = router;

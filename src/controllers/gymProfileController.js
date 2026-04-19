@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const GymProfile = require('../models/GymProfile');
 const User = require('../models/User');
 
@@ -30,9 +31,18 @@ exports.createGymProfile = async (req, res) => {
 
 // GET /api/gym-profile
 exports.getGymProfile = async (req, res) => {
-  const profile = await GymProfile.findOne({ owner: req.user._id });
+  let profile = await GymProfile.findOne({ owner: req.user._id });
   if (!profile) {
     return res.status(404).json({ success: false, message: 'Gym profile not found.' });
+  }
+  // Backfill qrToken using findOneAndUpdate to bypass Mongoose model-cache issues
+  if (!profile.qrToken) {
+    const token = crypto.randomBytes(24).toString('hex');
+    profile = await GymProfile.findOneAndUpdate(
+      { owner: req.user._id },
+      { $set: { qrToken: token } },
+      { new: true }
+    );
   }
   res.status(200).json({ success: true, data: profile });
 };

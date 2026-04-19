@@ -201,4 +201,111 @@ const sendOtpEmail = async (toEmail, firstName, code) => {
   }
 };
 
-module.exports = { sendOtpEmail };
+// ─── Password reset email ─────────────────────────────────────────────────────
+
+const resetHtml = (firstName, code) => `
+<!DOCTYPE html><html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#f59e0b,#f97316,#ef4444);padding:28px 40px;">
+          <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:0.06em;">GRAVITY GYM</span>
+        </td></tr>
+        <tr><td style="padding:36px 40px;">
+          <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Reset your password</p>
+          <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">
+            Hi ${firstName}, use the code below to reset your password. It expires in <strong>10 minutes</strong>.
+          </p>
+          <div style="background:#fff7ed;border:2px dashed #fed7aa;border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;">
+            <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#f97316;letter-spacing:2px;text-transform:uppercase;">Reset code</p>
+            <p style="margin:0;font-size:44px;font-weight:800;letter-spacing:14px;color:#0f172a;font-family:monospace;">${code}</p>
+          </div>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">If you didn't request a password reset, you can safely ignore this email.</p>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:18px 40px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">&copy; ${new Date().getFullYear()} Gravity Gym &mdash; Sent securely</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+const sendPasswordResetEmail = async (toEmail, firstName, code) => {
+  const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase();
+  const fromName = process.env.EMAIL_FROM_NAME || 'Gravity Gym';
+  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const subject = `${code} — reset your Gravity Gym password`;
+  const html = resetHtml(firstName, code);
+  const text = `Hi ${firstName},\n\nYour password reset code is: ${code}\n\nExpires in 10 minutes.\n\nIf you didn't request this, ignore this email.`;
+
+  console.log(`\n📤  Sending password reset email to ${toEmail}`);
+
+  if (provider === 'brevo') {
+    return sendViaBrevoApi(toEmail, fromName, fromAddress, subject, html, text);
+  }
+  const transporter = await getSmtpTransporter();
+  return transporter.sendMail({ from: `"${fromName}" <${fromAddress}>`, to: toEmail, subject, html, text });
+};
+
+// ─── Staff credentials email ──────────────────────────────────────────────────
+
+const credentialsHtml = (firstName, email, password) => `
+<!DOCTYPE html><html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#f59e0b,#f97316,#ef4444);padding:28px 40px;">
+          <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:0.06em;">GRAVITY GYM</span>
+        </td></tr>
+        <tr><td style="padding:36px 40px;">
+          <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Welcome to the team, ${firstName}!</p>
+          <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">
+            Your staff portal account has been created. Use the credentials below to log in.
+          </p>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:24px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-size:12px;color:#94a3b8;display:block;margin-bottom:2px;">Login email</span>
+                <span style="font-size:15px;font-weight:600;color:#0f172a;">${email}</span>
+              </td></tr>
+              <tr><td style="padding:8px 0;">
+                <span style="font-size:12px;color:#94a3b8;display:block;margin-bottom:2px;">Temporary password</span>
+                <span style="font-size:18px;font-weight:800;letter-spacing:4px;color:#f97316;font-family:monospace;">${password}</span>
+              </td></tr>
+            </table>
+          </div>
+          <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#92400e;font-weight:600;">⚠️ Please change your password after first login.</p>
+          </div>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">Contact your gym admin if you have trouble logging in.</p>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:18px 40px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">&copy; ${new Date().getFullYear()} Gravity Gym &mdash; Sent securely</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+const sendStaffCredentialsEmail = async (toEmail, firstName, email, password) => {
+  const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase();
+  const fromName = process.env.EMAIL_FROM_NAME || 'Gravity Gym';
+  const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const subject = `Your Gravity Gym staff login credentials`;
+  const html = credentialsHtml(firstName, email, password);
+  const text = `Hi ${firstName},\n\nYour staff portal credentials:\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after first login.`;
+
+  console.log(`\n📤  Sending staff credentials email to ${toEmail}`);
+
+  if (provider === 'brevo') {
+    return sendViaBrevoApi(toEmail, fromName, fromAddress, subject, html, text);
+  }
+  const transporter = await getSmtpTransporter();
+  return transporter.sendMail({ from: `"${fromName}" <${fromAddress}>`, to: toEmail, subject, html, text });
+};
+
+module.exports = { sendOtpEmail, sendPasswordResetEmail, sendStaffCredentialsEmail };

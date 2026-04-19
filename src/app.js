@@ -8,6 +8,9 @@ const memberRoutes = require('./routes/memberRoutes');
 const planRoutes = require('./routes/planRoutes');
 const gymProfileRoutes = require('./routes/gymProfileRoutes');
 const staffRoutes = require('./routes/staffRoutes');
+const publicRoutes = require('./routes/publicRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
+const transformationRoutes = require('./routes/transformationRoutes');
 
 const app = express();
 
@@ -33,6 +36,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/gym-profile', gymProfileRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/transformations', transformationRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.status(200).json({ success: true, message: 'Server is running.' }));

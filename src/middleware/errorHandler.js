@@ -21,7 +21,7 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 400;
   }
 
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && statusCode >= 500) {
     console.error(err.stack);
   }
 

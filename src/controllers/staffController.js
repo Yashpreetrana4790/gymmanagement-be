@@ -1,14 +1,10 @@
+const crypto = require('crypto');
 const Staff = require('../models/Staff');
-const GymProfile = require('../models/GymProfile');
+const User = require('../models/User');
+const resolveGym = require('../utils/resolveGym');
+const { sendStaffCredentialsEmail } = require('../services/emailService');
 
-async function resolveGym(req, res) {
-  const gym = await GymProfile.findOne({ owner: req.user._id });
-  if (!gym) {
-    res.status(404).json({ success: false, message: 'Gym profile not found.' });
-    return null;
-  }
-  return gym;
-}
+const ROLES_WITH_PORTAL_ACCESS = ['trainer', 'manager', 'receptionist'];
 
 async function generateStaffId(gymId) {
   const count = await Staff.countDocuments({ gym: gymId });
@@ -29,7 +25,7 @@ exports.getStaff = async (req, res) => {
   const gym = await resolveGym(req, res);
   if (!gym) return;
 
-  const staff = await Staff.findOne({ _id: req.params.id, gym: gym._id });
+  const staff = await Staff.findOne({ _id: req.params.id, gym: gym._id }).select('+tempPassword');
   if (!staff) {
     return res.status(404).json({ success: false, message: 'Staff member not found.' });
   }
@@ -79,7 +75,31 @@ exports.createStaff = async (req, res) => {
     },
   });
 
-  res.status(201).json({ success: true, data: staff });
+  // Auto-create portal login for trainer / manager / receptionist
+  let credentials = null;
+  if (ROLES_WITH_PORTAL_ACCESS.includes(role) && email) {
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password: tempPassword,
+      phone: phone || undefined,
+      role: 'staff',
+      stage: 'onboarded',
+    });
+    staff.userId = user._id;
+    staff.tempPassword = tempPassword;
+    await staff.save();
+    try {
+      await sendStaffCredentialsEmail(email, firstName, email, tempPassword);
+    } catch (err) {
+      console.error('[Email] Failed to send credentials email:', err.message);
+    }
+    credentials = { email, password: tempPassword };
+  }
+
+  res.status(201).json({ success: true, data: staff, credentials });
 };
 
 // PUT /api/staff/:id
@@ -109,4 +129,54 @@ exports.deleteStaff = async (req, res) => {
     return res.status(404).json({ success: false, message: 'Staff member not found.' });
   }
   res.status(200).json({ success: true, message: 'Staff member deleted.' });
+};
+
+// DELETE /api/staff/:id/account  (revoke login access)
+exports.revokeAccount = async (req, res) => {
+  const gym = await resolveGym(req, res);
+  if (!gym) return;
+
+  const staff = await Staff.findOne({ _id: req.params.id, gym: gym._id });
+  if (!staff) return res.status(404).json({ success: false, message: 'Staff member not found.' });
+  if (!staff.userId) return res.status(400).json({ success: false, message: 'No login account to revoke.' });
+
+  await Promise.all([
+    User.findByIdAndDelete(staff.userId),
+    Staff.findByIdAndUpdate(staff._id, { $unset: { userId: 1, tempPassword: 1 } }),
+  ]);
+
+  res.status(200).json({ success: true, message: 'Login access revoked.' });
+};
+
+// POST /api/staff/:id/create-account
+exports.createAccount = async (req, res) => {
+  const gym = await resolveGym(req, res);
+  if (!gym) return;
+
+  const staff = await Staff.findOne({ _id: req.params.id, gym: gym._id });
+  if (!staff) return res.status(404).json({ success: false, message: 'Staff member not found.' });
+  if (staff.userId) return res.status(409).json({ success: false, message: 'This staff member already has a login account.' });
+  if (!staff.email) return res.status(400).json({ success: false, message: 'Staff member must have an email address to create an account.' });
+
+  const { password } = req.body;
+  if (!password || password.length < 6) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+  }
+
+  const existing = await User.findOne({ email: staff.email });
+  if (existing) return res.status(409).json({ success: false, message: 'A user with this email already exists.' });
+
+  const user = await User.create({
+    firstName: staff.firstName,
+    lastName:  staff.lastName,
+    email:     staff.email,
+    password,
+    phone:     staff.phone,
+    role:      'staff',
+    stage:     'onboarded',
+  });
+
+  await Staff.findByIdAndUpdate(staff._id, { userId: user._id });
+
+  res.status(201).json({ success: true, message: 'Login account created.', data: { userId: user._id } });
 };

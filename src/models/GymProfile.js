@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const gymProfileSchema = new mongoose.Schema(
   {
@@ -28,6 +29,12 @@ const gymProfileSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
     isActive: { type: Boolean, default: true },
+    qrToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: () => crypto.randomBytes(24).toString('hex'),
+    },
   },
   { timestamps: true }
 );
