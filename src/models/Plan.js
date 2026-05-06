@@ -12,11 +12,6 @@ const planSchema = new mongoose.Schema(
       required: [true, 'Plan name is required'],
       trim: true,
     },
-    type: {
-      type: String,
-      enum: ['basic', 'standard', 'premium'],
-      required: true,
-    },
     durationDays: {
       type: Number,
       required: [true, 'Duration in days is required'],

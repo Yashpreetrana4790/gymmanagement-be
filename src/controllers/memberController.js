@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const Member = require('../models/Member');
 const User = require('../models/User');
+const Plan = require('../models/Plan');
 const resolveGym = require('../utils/resolveGym');
 
 const POPULATE_USER = 'firstName lastName email phone dateOfBirth';
@@ -35,6 +36,14 @@ exports.getMember = async (req, res) => {
 exports.createMember = async (req, res) => {
   const gym = await resolveGym(req, res);
   if (!gym) return;
+
+  const planCount = await Plan.countDocuments({ gym: gym._id, isActive: true });
+  if (planCount === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Create at least one membership plan before adding members.',
+    });
+  }
 
   const {
     firstName, lastName, email, phone, dateOfBirth,

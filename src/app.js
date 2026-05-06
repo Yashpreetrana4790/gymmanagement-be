@@ -11,6 +11,7 @@ const staffRoutes = require('./routes/staffRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const transformationRoutes = require('./routes/transformationRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/transformations', transformationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.status(200).json({ success: true, message: 'Server is running.' }));
