@@ -338,3 +338,22 @@ exports.getZombieMembers = async (req, res) => {
     },
   });
 };
+
+// GET /api/my-members — returns members assigned to the current trainer
+exports.getMyMembers = async (req, res) => {
+  const resolveGym = require('../utils/resolveGym');
+  const Staff = require('../models/Staff');
+  const gym = await resolveGym(req, res);
+  if (!gym) return;
+
+  const staffRecord = await Staff.findOne({ userId: req.user._id, gym: gym._id });
+  if (!staffRecord) {
+    return res.status(200).json({ success: true, data: [] });
+  }
+
+  const members = await Member.find({ gym: gym._id, trainer: staffRecord._id })
+    .populate('user', POPULATE_USER)
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({ success: true, data: members });
+};

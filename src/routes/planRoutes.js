@@ -5,9 +5,9 @@ const { protect, authorize } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { planSchema } = require('../lib/validations');
 
-router.get('/',         getAllPlans);
+router.get('/',         protect, authorize('admin', 'staff'), getAllPlans);
 router.get('/stats',    protect, authorize('admin', 'staff'), getPlanStats);
-router.get('/:id',      getPlan);
+router.get('/:id',      protect, authorize('admin', 'staff'), getPlan);
 
 router.use(protect, authorize('admin'));
 router.post('/',        validate(planSchema), createPlan);

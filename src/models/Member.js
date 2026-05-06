@@ -91,6 +91,13 @@ const memberSchema = new mongoose.Schema(
       },
     },
 
+    // ── Assigned trainer (optional) ─────────────────────────────────────────
+    trainer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Staff',
+      default: null,
+    },
+
     // ── Visit log (each entry = one check-in / visit) ────────────────────────
     attendance: [
       {
