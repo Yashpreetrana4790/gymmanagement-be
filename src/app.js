@@ -19,8 +19,9 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS — must come before all routes
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight for all routes
 
 // Request logger
 if (process.env.NODE_ENV === 'development') {
