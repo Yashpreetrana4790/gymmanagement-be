@@ -1,6 +1,6 @@
 const express = require('express');
 const morgan = require('morgan');
-const { helmet, cors, corsOptions, apiLimiter } = require('./middleware/security');
+const { helmet, cors, corsOptions } = require('./middleware/security');
 const errorHandler = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/authRoutes');
@@ -29,9 +29,6 @@ if (process.env.NODE_ENV === 'development') {
 
 // Body parser
 app.use(express.json({ limit: '10kb' }));
-
-// Global rate limiter
-app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

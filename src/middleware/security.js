@@ -10,10 +10,11 @@ const corsOptions = {
 };
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 500 : 0, // 0 = disabled in dev
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production',
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 
